@@ -1,0 +1,15 @@
+# Normalise text in the repository, check out native on Windows.
+* text=auto
+
+# Binaries must never be line-ending converted, or they are corrupted.
+*.exe   binary
+*.dll   binary
+*.png   binary
+*.ico   binary
+*.icns  binary
+*.woff  binary
+*.woff2 binary
+
+# Generated: keep them out of diffs and language statistics.
+package-lock.json  linguist-generated=true -diff
+src-tauri/Cargo.lock linguist-generated=true -diff

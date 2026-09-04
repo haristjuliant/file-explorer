@@ -1,0 +1,129 @@
+/* List view: a header that is a sibling of the scroller, never inside it. */
+
+.fm-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/*
+ * Header and rows share one grid template built from the same custom
+ * properties, so they cannot drift out of alignment no matter how the columns
+ * are resized.
+ */
+.fm-list-header,
+.fm-list-row {
+  display: grid;
+  grid-template-columns:
+    var(--fm-col-name)
+    var(--fm-col-modified)
+    var(--fm-col-size)
+    minmax(var(--fm-col-kind), 1fr);
+  align-items: center;
+}
+
+.fm-list-header {
+  position: relative;
+  height: var(--fm-header-h);
+  flex: none;
+  font-size: var(--fm-fs-header);
+  color: var(--fm-text-secondary);
+  background: var(--fm-bg-header);
+  box-shadow: inset 0 -1px 0 var(--fm-separator);
+  user-select: none;
+}
+
+.fm-th {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 100%;
+  padding: 0 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  box-shadow: inset -1px 0 0 var(--fm-separator);
+}
+.fm-th:last-child {
+  box-shadow: none;
+}
+.fm-th:hover {
+  background: var(--fm-row-hover);
+}
+.fm-th[aria-sort] {
+  color: var(--fm-text);
+  font-weight: var(--fm-fw-medium);
+}
+.fm-th--num {
+  justify-content: flex-end;
+  padding-right: 12px;
+}
+
+.fm-th-resize {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 2;
+}
+
+.fm-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  outline: none;
+}
+
+.fm-list-rows {
+  position: relative;
+  width: 100%;
+}
+
+.fm-list-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--fm-row-h);
+  white-space: nowrap;
+  color: var(--fm-text);
+}
+
+.fm-list-row > .fm-cell {
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fm-list-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.fm-rename-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 18px;
+  padding: 0 3px;
+  font: inherit;
+  color: var(--fm-text);
+  background: var(--fm-bg-content);
+  border: 1px solid var(--fm-accent);
+  border-radius: 3px;
+}
+
+/* Marquee (rubber-band) selection rectangle. */
+.fm-marquee {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--fm-accent) 16%, transparent);
+  border: 1px solid var(--fm-accent);
+  border-radius: 2px;
+}

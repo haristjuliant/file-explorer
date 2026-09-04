@@ -1,0 +1,286 @@
+/* Context menu, dialogs, progress popover and toasts. */
+
+.fm-menu {
+  position: fixed;
+  z-index: 200;
+  min-width: 200px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--fm-bg-elevated);
+  box-shadow: var(--fm-shadow-panel);
+}
+
+.fm-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 4px;
+  text-align: left;
+  color: var(--fm-text);
+  white-space: nowrap;
+}
+.fm-menu-item:hover:not(:disabled) {
+  background: var(--fm-sel-active);
+  color: var(--fm-text-onaccent);
+}
+.fm-menu-item:disabled {
+  color: var(--fm-text-tertiary);
+}
+.fm-menu-item--danger:hover:not(:disabled) {
+  background: var(--fm-danger);
+}
+.fm-menu-shortcut {
+  margin-left: auto;
+  padding-left: 20px;
+  font-size: var(--fm-fs-secondary);
+  color: var(--fm-text-tertiary);
+}
+.fm-menu-item:hover:not(:disabled) .fm-menu-shortcut {
+  color: rgba(255, 255, 255, 0.75);
+}
+.fm-menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--fm-separator);
+}
+
+/* ------------------------------------------------------------------------- */
+
+.fm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.fm-modal {
+  width: min(520px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 20px 14px;
+  border-radius: var(--fm-radius-panel);
+  background: var(--fm-bg-elevated);
+  box-shadow: var(--fm-shadow-panel);
+}
+.fm-modal h2 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: var(--fm-fw-medium);
+}
+.fm-modal p {
+  margin: 0 0 12px;
+  color: var(--fm-text-secondary);
+}
+
+.fm-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  margin-bottom: 12px;
+}
+
+.fm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: none;
+}
+.fm-modal-actions--split {
+  justify-content: space-between;
+}
+
+.fm-btn--primary {
+  background: var(--fm-accent);
+  color: var(--fm-text-onaccent);
+  box-shadow: none;
+}
+.fm-btn--primary:hover {
+  background: var(--fm-accent-hover);
+}
+.fm-btn--danger {
+  background: var(--fm-danger);
+  color: var(--fm-text-onaccent);
+  box-shadow: none;
+}
+.fm-btn--danger:hover {
+  filter: brightness(1.08);
+}
+
+.fm-conflict {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 10px 0;
+  box-shadow: inset 0 -1px 0 var(--fm-separator);
+}
+.fm-conflict:last-child {
+  box-shadow: none;
+}
+.fm-conflict-name {
+  grid-column: 1 / -1;
+  font-weight: var(--fm-fw-medium);
+  overflow-wrap: anywhere;
+}
+.fm-conflict-side {
+  font-size: var(--fm-fs-secondary);
+  color: var(--fm-text-secondary);
+}
+.fm-conflict-side strong {
+  display: block;
+  font-weight: var(--fm-fw-medium);
+  color: var(--fm-text-tertiary);
+}
+.fm-conflict-note {
+  grid-column: 1 / -1;
+  font-size: var(--fm-fs-secondary);
+  color: var(--fm-text-tertiary);
+}
+
+.fm-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fm-fs-secondary);
+  color: var(--fm-text-secondary);
+}
+
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Progress is a NON-modal popover, the way Finder does it: a long copy must
+ * never stop you browsing.
+ */
+.fm-progress {
+  position: fixed;
+  right: 12px;
+  bottom: calc(var(--fm-statusbar-h) + 10px);
+  z-index: 120;
+  width: 340px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--fm-bg-elevated);
+  box-shadow: var(--fm-shadow-panel);
+}
+.fm-progress + .fm-progress {
+  bottom: calc(var(--fm-statusbar-h) + 84px);
+}
+.fm-progress-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.fm-progress-title strong {
+  font-weight: var(--fm-fw-medium);
+}
+.fm-progress-detail {
+  font-size: var(--fm-fs-secondary);
+  color: var(--fm-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fm-progress-bar {
+  height: 5px;
+  margin: 8px 0 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--fm-row-hover);
+}
+.fm-progress-fill {
+  height: 100%;
+  background: var(--fm-accent);
+  transition: width 120ms linear;
+}
+.fm-progress-fill--indeterminate {
+  width: 35%;
+  animation: fm-slide 1100ms ease-in-out infinite;
+}
+.fm-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ------------------------------------------------------------------------- */
+
+.fm-toasts {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--fm-statusbar-h) + 14px);
+  transform: translateX(-50%);
+  z-index: 130;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.fm-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 70vw;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--fm-bg-elevated);
+  box-shadow: var(--fm-shadow-panel);
+  font-size: var(--fm-fs-secondary);
+}
+.fm-toast[data-tone="error"] {
+  color: var(--fm-danger);
+}
+
+/* ------------------------------------------------------------------------- */
+
+.fm-shortcuts {
+  width: min(720px, 92vw);
+}
+.fm-shortcuts-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 24px;
+  align-content: start;
+}
+.fm-shortcuts-body h3 {
+  margin: 10px 0 4px;
+  font-size: var(--fm-fs-header);
+  font-weight: var(--fm-fw-medium);
+  color: var(--fm-text-tertiary);
+}
+.fm-shortcuts-body dl {
+  margin: 0;
+}
+.fm-shortcuts-body dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+.fm-shortcuts-body dt {
+  color: var(--fm-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fm-shortcuts-body dd {
+  margin: 0;
+  flex: none;
+}
+.fm-shortcuts-body kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--fm-font);
+  font-size: var(--fm-fs-secondary);
+  color: var(--fm-text);
+  background: var(--fm-bg-content);
+  box-shadow: 0 0 0 0.5px var(--fm-separator-strong);
+}

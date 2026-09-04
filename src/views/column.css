@@ -1,0 +1,74 @@
+/* Column view: a horizontal strip of independently scrolling directory lists. */
+
+.fm-columns {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Keeps column widths from jumping when a vertical scrollbar appears. */
+  scrollbar-gutter: stable;
+}
+
+.fm-column {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-shadow: inset -1px 0 0 var(--fm-separator);
+  background: var(--fm-bg-content);
+}
+
+/* The column holding the cursor is the one publishing the keyboard order. */
+.fm-column[data-active="true"] {
+  background: var(--fm-bg-content);
+}
+
+.fm-column-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  outline: none;
+}
+
+.fm-column-rows {
+  position: relative;
+  width: 100%;
+}
+
+.fm-column-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--fm-row-h);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 8px;
+  white-space: nowrap;
+  color: var(--fm-text);
+}
+
+.fm-column-resize {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 4;
+}
+
+/* The trailing preview column, shown once the cursor lands on a file. */
+.fm-column-preview {
+  flex: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  background: var(--fm-bg-content);
+  box-shadow: inset -1px 0 0 var(--fm-separator);
+}

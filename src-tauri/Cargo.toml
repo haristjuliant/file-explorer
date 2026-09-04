@@ -1,0 +1,66 @@
+[package]
+name         = "file-manager"
+version      = "0.1.0"
+description  = "Finder-style file manager for Windows"
+authors      = ["ahmadharist@madhani.id"]
+edition      = "2021"
+rust-version = "1.82"
+publish      = false
+
+[lib]
+name       = "file_manager_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri      = { version = "2.11.5", features = ["protocol-asset", "devtools"] }
+serde      = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0"
+dunce      = "1.0.5"
+
+# Only the formats we actually decode, so the dependency tree stays small.
+# AVIF, HEIC, RAW and PSD are deliberately absent: they need native decoders,
+# and `preview_plan` reports them as unsupported rather than pretending.
+image = { version = "0.25.10", default-features = false, features = [
+  "png", "jpeg", "gif", "webp", "bmp", "ico", "tiff", "rayon",
+] }
+
+# Recycle Bin, and the restore path that makes delete undoable.
+trash = "5.2.7"
+# Filesystem watching. Default features are macOS-only, so they are off.
+notify = { version = "8.2.0", default-features = false }
+
+# Recursive search. `follow_links(false)` is what keeps a reparse point from
+# turning a search of the home folder into an endless walk.
+walkdir = "2.5.0"
+
+[dependencies.windows]
+version  = "0.62.2"
+features = [
+  "Win32_Foundation",                 # HANDLE, BOOL, WIN32_ERROR
+  "Win32_Storage_FileSystem",         # GetLogicalDriveStringsW, GetDriveTypeW,
+                                      # GetVolumeInformationW, GetDiskFreeSpaceExW, FILE_ATTRIBUTE_*
+  "Win32_System_Com",                 # CoTaskMemFree (SHGetKnownFolderPath output)
+  "Win32_System_Diagnostics_Debug",   # SetThreadErrorMode / SEM_FAILCRITICALERRORS
+  "Win32_System_WindowsProgramming",  # DRIVE_FIXED / DRIVE_REMOVABLE / DRIVE_REMOTE / ...
+  "Win32_UI_Shell",                   # SHGetKnownFolderPath, FOLDERID_*, ShellExecuteW,
+                                      # StrCmpLogicalW, SHParseDisplayName, SHOpenFolderAndSelectItems
+  "Win32_UI_Shell_Common",            # ITEMIDLIST
+  "Win32_UI_WindowsAndMessaging",     # SW_SHOWNORMAL
+]
+
+[profile.release]
+opt-level     = 3          # NOT "s": directory enumeration and image decode are the hot paths
+lto           = "fat"
+codegen-units = 1
+panic         = "unwind"   # REQUIRED: we rely on catch_unwind around image/COM decoders
+strip         = "symbols"
+incremental   = false
+
+[profile.dev]
+opt-level = 1              # debug builds are otherwise unusable on 50k-entry directories
+
+[profile.dev.package."*"]
+opt-level = 3              # dependencies (image, png, jpeg) must be optimized even in dev

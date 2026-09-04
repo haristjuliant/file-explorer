@@ -1,0 +1,78 @@
+/*
+ * Tree view: one flat virtualized list, indented by depth.
+ *
+ * It shares the list view's column custom properties, so the Name / Date / Size
+ * columns line up identically between the two modes.
+ */
+
+.fm-tree {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.fm-tree-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  outline: none;
+}
+
+.fm-tree-rows {
+  position: relative;
+  width: 100%;
+}
+
+.fm-tree-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--fm-row-h);
+  display: grid;
+  grid-template-columns:
+    var(--fm-col-name)
+    var(--fm-col-modified)
+    minmax(var(--fm-col-size), 1fr);
+  align-items: center;
+  white-space: nowrap;
+  color: var(--fm-text);
+}
+
+.fm-tree-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+/* Indentation is the only thing that conveys nesting; there is no nested DOM. */
+.fm-tree-indent {
+  flex: none;
+}
+
+.fm-twisty {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--fm-text-tertiary);
+  transition: transform 120ms ease;
+}
+.fm-twisty[data-expanded="true"] {
+  transform: rotate(90deg);
+}
+.fm-twisty[data-hidden="true"] {
+  visibility: hidden;
+}
+body[data-window-focused="true"] .fm-row[data-selected="true"] .fm-twisty {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.fm-tree-placeholder {
+  color: var(--fm-text-tertiary);
+  font-style: italic;
+}

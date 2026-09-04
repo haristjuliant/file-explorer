@@ -1,0 +1,22 @@
+{
+  "$schema": "../gen/schemas/windows-schema.json",
+  "identifier": "default",
+  "description": "Core window, event and path access for the main window. No plugins: opening files uses our own ShellExecuteW command, and all dialogs are in-app React modals.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-close",
+    "core:window:allow-show",
+    "core:window:allow-set-title",
+    "core:window:allow-set-focus",
+    "core:event:default",
+    "core:path:default",
+    "core:app:default"
+  ]
+}

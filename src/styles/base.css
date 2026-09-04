@@ -1,0 +1,593 @@
+/* Reset, chrome, and the shared primitives every view uses. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--fm-font);
+  font-size: var(--fm-fs-row);
+  line-height: var(--fm-lh-row);
+  font-weight: var(--fm-fw-normal);
+  letter-spacing: var(--fm-letter-tight);
+  color: var(--fm-text);
+  background: var(--fm-bg-content);
+  /* A file manager is not a document: text selection by drag would fight
+     marquee selection everywhere. Re-enabled per element where it belongs. */
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+}
+
+input,
+textarea,
+[contenteditable],
+.fm-selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: default;
+}
+
+/*
+ * Hairlines.
+ *
+ * Finder separators are thinner than a logical pixel. An inset box-shadow does
+ * not add to layout height the way a border does, and on a 1.25x or 1.5x Windows
+ * DPI scale it renders as a genuine thin line rather than a two-pixel slab.
+ */
+.fm-hairline-b {
+  box-shadow: inset 0 -1px 0 var(--fm-separator);
+}
+.fm-hairline-t {
+  box-shadow: inset 0 1px 0 var(--fm-separator);
+}
+.fm-hairline-r {
+  box-shadow: inset -1px 0 0 var(--fm-separator);
+}
+.fm-hairline-l {
+  box-shadow: inset 1px 0 0 var(--fm-separator);
+}
+
+/*
+ * Focus ring via box-shadow, never `outline`: an outline is clipped inside the
+ * transform layers the virtualizer creates.
+ */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  box-shadow: 0 0 0 3px var(--fm-focus-ring);
+  border-radius: var(--fm-radius-ctl);
+}
+
+/* Overlay scrollbars, appearing on hover of their own scroller. */
+.fm-scroll {
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.fm-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.fm-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.fm-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.fm-scroll:hover::-webkit-scrollbar-thumb {
+  background: var(--fm-text-tertiary);
+  background-clip: padding-box;
+}
+.fm-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ------------------------------------------------------------------------ */
+/* App shell                                                                 */
+/* ------------------------------------------------------------------------ */
+
+.fm-app {
+  display: grid;
+  height: 100%;
+  grid-template-columns: var(--fm-sidebar-w) minmax(0, 1fr) auto;
+  grid-template-rows: var(--fm-toolbar-h) minmax(0, 1fr) var(--fm-statusbar-h);
+  grid-template-areas:
+    "toolbar toolbar toolbar"
+    "sidebar content preview"
+    "status  status  status";
+  background: var(--fm-bg-content);
+}
+
+.fm-toolbar {
+  grid-area: toolbar;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  background: var(--fm-bg-toolbar);
+  box-shadow: inset 0 -1px 0 var(--fm-separator);
+}
+
+.fm-sidebar {
+  grid-area: sidebar;
+  position: relative;
+  background: var(--fm-bg-sidebar);
+  box-shadow: inset -1px 0 0 var(--fm-separator);
+  padding: 8px 0;
+}
+
+.fm-content {
+  grid-area: content;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--fm-bg-content);
+}
+
+.fm-preview {
+  grid-area: preview;
+  width: var(--fm-preview-w);
+  position: relative;
+  background: var(--fm-bg-sidebar);
+  box-shadow: inset 1px 0 0 var(--fm-separator);
+}
+
+.fm-status {
+  grid-area: status;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: var(--fm-fs-secondary);
+  color: var(--fm-text-secondary);
+  background: var(--fm-bg-toolbar);
+  box-shadow: inset 0 1px 0 var(--fm-separator);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Toolbar pieces                                                            */
+/* ------------------------------------------------------------------------ */
+
+.fm-tb-group {
+  display: flex;
+  align-items: center;
+  border-radius: var(--fm-radius-ctl);
+  background: var(--fm-bg-content);
+  box-shadow: 0 0 0 0.5px var(--fm-separator-strong);
+  overflow: hidden;
+  flex: none;
+}
+
+.fm-icon-btn {
+  width: 30px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--fm-text-secondary);
+  border-radius: 0;
+}
+.fm-icon-btn:hover:not(:disabled) {
+  background: var(--fm-row-hover);
+}
+.fm-icon-btn:disabled {
+  color: var(--fm-text-tertiary);
+}
+.fm-tb-group > .fm-icon-btn + .fm-icon-btn {
+  box-shadow: inset 1px 0 0 var(--fm-separator);
+}
+
+.fm-icon-btn--standalone {
+  border-radius: var(--fm-radius-ctl);
+  width: 30px;
+  height: 24px;
+  flex: none;
+}
+.fm-icon-btn--standalone[aria-pressed="true"] {
+  background: var(--fm-sel-sidebar);
+  color: var(--fm-text);
+}
+
+/* The three-way segmented control, with a sliding lozenge. */
+.fm-segmented {
+  position: relative;
+  display: flex;
+  flex: none;
+  padding: 1px;
+  border-radius: var(--fm-radius-ctl);
+  background: var(--fm-bg-content);
+  box-shadow: 0 0 0 0.5px var(--fm-separator-strong);
+}
+.fm-segmented::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 32px;
+  height: calc(100% - 2px);
+  border-radius: 5px;
+  background: var(--fm-lozenge);
+  box-shadow: var(--fm-shadow-lozenge);
+  transform: translateX(calc(var(--fm-seg-index, 0) * 32px));
+  transition: transform 180ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.fm-segmented > button {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--fm-text-secondary);
+}
+.fm-segmented > button[aria-pressed="true"] {
+  color: var(--fm-text);
+}
+
+/* Breadcrumb */
+.fm-pathbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  height: 24px;
+}
+.fm-crumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--fm-text-secondary);
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: none;
+}
+.fm-crumb:hover {
+  background: var(--fm-row-hover);
+}
+.fm-crumb[aria-current="page"] {
+  color: var(--fm-text);
+}
+.fm-crumb-sep {
+  color: var(--fm-text-tertiary);
+  flex: none;
+  font-size: 11px;
+}
+.fm-pathbar-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 24px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--fm-text);
+  background: var(--fm-bg-content);
+  border-radius: var(--fm-radius-ctl);
+  box-shadow: 0 0 0 0.5px var(--fm-separator-strong);
+}
+
+/* Search field */
+.fm-search {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  width: 200px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--fm-bg-content);
+  box-shadow: 0 0 0 0.5px var(--fm-separator-strong);
+  color: var(--fm-text-tertiary);
+}
+.fm-search > input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  color: var(--fm-text);
+  background: none;
+  border: 0;
+}
+.fm-search > input::placeholder {
+  color: var(--fm-text-tertiary);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Sidebar                                                                   */
+/* ------------------------------------------------------------------------ */
+
+.fm-sidebar-section {
+  padding: 10px 16px 2px;
+  font-size: var(--fm-fs-header);
+  font-weight: var(--fm-fw-medium);
+  color: var(--fm-text-tertiary);
+}
+
+/*
+ * Sidebar rows use a rounded pill inset from both edges -- the macOS 11+ look,
+ * and the detail most Windows imitations miss. Content rows are full-bleed
+ * instead; see `.fm-row`.
+ */
+.fm-place {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: calc(100% - 16px);
+  margin: 0 8px;
+  height: var(--fm-sidebar-row-h);
+  padding: 0 8px;
+  border-radius: var(--fm-radius-row);
+  color: var(--fm-text);
+  text-align: left;
+}
+.fm-place:hover {
+  background: var(--fm-row-hover);
+}
+.fm-place[aria-current="true"] {
+  background: var(--fm-sel-sidebar);
+}
+.fm-place-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fm-place-sub {
+  margin-left: auto;
+  font-size: var(--fm-fs-secondary);
+  color: var(--fm-text-tertiary);
+  flex: none;
+}
+.fm-place[data-offline="true"] {
+  color: var(--fm-text-tertiary);
+}
+
+/* Drag handles for sidebar and preview widths. */
+.fm-resize-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 5;
+}
+.fm-resize-v--right {
+  right: -3px;
+}
+.fm-resize-v--left {
+  left: -3px;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Rows, shared by list / column / tree                                      */
+/* ------------------------------------------------------------------------ */
+
+.fm-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--fm-row-h);
+  padding: 0 8px;
+  white-space: nowrap;
+  color: var(--fm-text);
+}
+.fm-row[data-odd="true"] {
+  background: var(--fm-row-alt);
+}
+.fm-row:hover {
+  background: var(--fm-row-hover);
+}
+
+/*
+ * Selection greys out when the window is not frontmost. Finder's inactive grey
+ * selection is one of the strongest "this looks like Finder" cues.
+ */
+.fm-row[data-selected="true"] {
+  background: var(--fm-sel-inactive);
+  color: var(--fm-text);
+}
+body[data-window-focused="true"] .fm-row[data-selected="true"] {
+  background: var(--fm-sel-active);
+  color: var(--fm-text-onaccent);
+}
+body[data-window-focused="true"] .fm-row[data-selected="true"] .fm-cell--secondary {
+  color: rgba(255, 255, 255, 0.75);
+}
+.fm-row[data-cursor="true"] {
+  box-shadow: inset 0 0 0 1px var(--fm-focus-ring);
+}
+.fm-row[data-cut="true"] {
+  opacity: 0.45;
+}
+.fm-row[data-pending="true"] {
+  opacity: 0.55;
+}
+.fm-row[data-dimmed="true"] .fm-cell,
+.fm-row[data-dimmed="true"] .fm-name {
+  opacity: 0.55;
+}
+
+.fm-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fm-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fm-cell--secondary {
+  color: var(--fm-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.fm-cell--num {
+  text-align: right;
+  padding-right: 12px;
+}
+
+.fm-chevron-right {
+  margin-left: auto;
+  color: var(--fm-text-tertiary);
+  flex: none;
+}
+body[data-window-focused="true"] .fm-row[data-selected="true"] .fm-chevron-right {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ------------------------------------------------------------------------ */
+/* States                                                                    */
+/* ------------------------------------------------------------------------ */
+
+.fm-center {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  text-align: center;
+  color: var(--fm-text-secondary);
+}
+.fm-center h3 {
+  margin: 0 0 4px;
+  font-size: var(--fm-fs-row);
+  font-weight: var(--fm-fw-medium);
+  color: var(--fm-text);
+}
+.fm-center p {
+  margin: 0 0 12px;
+  max-width: 34ch;
+  font-size: var(--fm-fs-secondary);
+}
+.fm-btn {
+  padding: 3px 12px;
+  border-radius: var(--fm-radius-ctl);
+  background: var(--fm-bg-content);
+  box-shadow: 0 0 0 0.5px var(--fm-separator-strong);
+  color: var(--fm-text);
+}
+.fm-btn:hover {
+  background: var(--fm-row-hover);
+}
+
+/* Skeleton rows, delayed so a sub-10ms local read shows nothing at all. */
+.fm-skeleton {
+  padding: 0 8px;
+}
+.fm-skeleton-row {
+  height: var(--fm-row-h);
+  display: flex;
+  align-items: center;
+}
+.fm-skeleton-bar {
+  height: 9px;
+  border-radius: 4px;
+  background: var(--fm-row-hover);
+  opacity: 0;
+  animation: fm-skeleton-in 240ms ease forwards;
+  animation-delay: 120ms;
+}
+@keyframes fm-skeleton-in {
+  to {
+    opacity: 1;
+  }
+}
+
+/* A 2px indeterminate line under the header while revalidating. */
+.fm-revalidating {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  flex: none;
+}
+.fm-revalidating::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: var(--fm-accent);
+  animation: fm-slide 1100ms ease-in-out infinite;
+}
+@keyframes fm-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.fm-truncation-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: var(--fm-fs-secondary);
+  color: var(--fm-text-secondary);
+  background: var(--fm-bg-header);
+  box-shadow: inset 0 -1px 0 var(--fm-separator);
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Window controls (undecorated window)                                       */
+/* ------------------------------------------------------------------------- */
+
+.fm-wincontrols {
+  display: flex;
+  align-items: stretch;
+  flex: none;
+  align-self: stretch;
+  /* Cancels the toolbar's own padding so the buttons reach the window edge,
+     which is where Windows users aim for them. */
+  margin: 0 -10px 0 4px;
+}
+
+.fm-wincontrol {
+  width: 46px;
+  display: grid;
+  place-items: center;
+  color: var(--fm-text-secondary);
+  /* Tauri drags only from the element carrying data-tauri-drag-region, and
+     these buttons do not, so they stay clickable without further ceremony. */
+}
+.fm-wincontrol:hover {
+  background: var(--fm-row-hover);
+  color: var(--fm-text);
+}
+.fm-wincontrol--close:hover {
+  background: #c42b1c;
+  color: #ffffff;
+}

@@ -1,0 +1,150 @@
+/*
+ * Design tokens.
+ *
+ * Light is defined on bare `:root`; dark redefines only the colour tokens, both
+ * under `prefers-color-scheme` and under an explicit `[data-theme]` attribute so
+ * a manual override in settings later is a one-attribute change.
+ *
+ * Four details carry most of the Finder impression, and each is called out where
+ * it is used: sub-pixel hairlines via inset box-shadow, selection that greys out
+ * when the window loses focus, rounded pill selection in the sidebar against
+ * full-bleed selection in content rows, and 13px type at 400 weight everywhere
+ * except sidebar section labels.
+ */
+
+:root {
+  /* -- typography ------------------------------------------------------- */
+  --fm-font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --fm-font-mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --fm-fs-row: 13px;
+  --fm-fs-header: 11px;
+  --fm-fs-secondary: 11px;
+  --fm-lh-row: 16px;
+  --fm-fw-normal: 400;
+  --fm-fw-medium: 500;
+  --fm-letter-tight: -0.005em;
+
+  /* -- metrics ---------------------------------------------------------- */
+  --fm-row-h: 24px;
+  --fm-row-h-compact: 20px;
+  --fm-header-h: 25px;
+  --fm-toolbar-h: 52px;
+  --fm-statusbar-h: 24px;
+  --fm-sidebar-row-h: 24px;
+  --fm-column-w: 220px;
+  --fm-indent: 16px;
+  --fm-radius-row: 5px;
+  --fm-radius-ctl: 6px;
+  --fm-radius-panel: 10px;
+  --fm-icon-row: 16px;
+  --fm-icon-lg: 128px;
+
+  /* Live layout values, updated imperatively during a drag so resizing costs
+     zero React renders. */
+  --fm-sidebar-w: 200px;
+  --fm-preview-w: 280px;
+  --fm-col-name: 320px;
+  --fm-col-modified: 160px;
+  --fm-col-size: 96px;
+  --fm-col-kind: 140px;
+
+  /* -- light palette ---------------------------------------------------- */
+  --fm-bg-content: #ffffff;
+  --fm-bg-sidebar: #f2f2f4;
+  --fm-bg-toolbar: #f6f6f8;
+  --fm-bg-header: #f6f6f8;
+  --fm-bg-elevated: #ffffff;
+  --fm-row-alt: #f5f5f7;
+  --fm-row-hover: rgba(0, 0, 0, 0.045);
+
+  --fm-text: #1d1d1f;
+  --fm-text-secondary: rgba(0, 0, 0, 0.56);
+  --fm-text-tertiary: rgba(0, 0, 0, 0.34);
+  --fm-text-onaccent: #ffffff;
+
+  --fm-accent: #0a6cff;
+  --fm-accent-hover: #0a5fe0;
+  --fm-sel-active: #0a6cff;
+  --fm-sel-inactive: rgba(0, 0, 0, 0.09);
+  --fm-sel-sidebar: rgba(0, 0, 0, 0.085);
+  --fm-focus-ring: rgba(10, 108, 255, 0.55);
+
+  --fm-separator: rgba(0, 0, 0, 0.1);
+  --fm-separator-strong: rgba(0, 0, 0, 0.18);
+  --fm-shadow-panel: 0 12px 48px rgba(0, 0, 0, 0.28), 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+  --fm-shadow-lozenge: 0 1px 2px rgba(0, 0, 0, 0.16), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --fm-lozenge: #ffffff;
+
+  --fm-folder: #4bb3f5;
+  --fm-danger: #ff3b30;
+  --fm-warning: #ff9f0a;
+
+  color-scheme: light dark;
+}
+
+/* -- dark palette ------------------------------------------------------- */
+:root:not([data-theme="light"]) {
+  /* Placeholder so the selector exists even without a media match. */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fm-bg-content: #1e1e1e;
+    --fm-bg-sidebar: #262628;
+    --fm-bg-toolbar: #2b2b2d;
+    --fm-bg-header: #2b2b2d;
+    --fm-bg-elevated: #2f2f31;
+    --fm-row-alt: #232325;
+    --fm-row-hover: rgba(255, 255, 255, 0.055);
+
+    --fm-text: #f2f2f2;
+    --fm-text-secondary: rgba(255, 255, 255, 0.6);
+    --fm-text-tertiary: rgba(255, 255, 255, 0.38);
+    --fm-text-onaccent: #ffffff;
+
+    --fm-accent: #0a84ff;
+    --fm-accent-hover: #339bff;
+    --fm-sel-active: #0a5ed7;
+    --fm-sel-inactive: rgba(255, 255, 255, 0.11);
+    --fm-sel-sidebar: rgba(255, 255, 255, 0.11);
+    --fm-focus-ring: rgba(10, 132, 255, 0.65);
+
+    --fm-separator: rgba(255, 255, 255, 0.12);
+    --fm-separator-strong: rgba(255, 255, 255, 0.2);
+    --fm-shadow-panel: 0 12px 48px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+    --fm-shadow-lozenge: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    --fm-lozenge: #3a3a3c;
+
+    --fm-folder: #6fc4f7;
+  }
+}
+
+/* Explicit override wins in both directions. */
+:root[data-theme="dark"] {
+  --fm-bg-content: #1e1e1e;
+  --fm-bg-sidebar: #262628;
+  --fm-bg-toolbar: #2b2b2d;
+  --fm-bg-header: #2b2b2d;
+  --fm-bg-elevated: #2f2f31;
+  --fm-row-alt: #232325;
+  --fm-row-hover: rgba(255, 255, 255, 0.055);
+
+  --fm-text: #f2f2f2;
+  --fm-text-secondary: rgba(255, 255, 255, 0.6);
+  --fm-text-tertiary: rgba(255, 255, 255, 0.38);
+
+  --fm-accent: #0a84ff;
+  --fm-accent-hover: #339bff;
+  --fm-sel-active: #0a5ed7;
+  --fm-sel-inactive: rgba(255, 255, 255, 0.11);
+  --fm-sel-sidebar: rgba(255, 255, 255, 0.11);
+  --fm-focus-ring: rgba(10, 132, 255, 0.65);
+
+  --fm-separator: rgba(255, 255, 255, 0.12);
+  --fm-separator-strong: rgba(255, 255, 255, 0.2);
+  --fm-shadow-panel: 0 12px 48px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  --fm-shadow-lozenge: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --fm-lozenge: #3a3a3c;
+
+  --fm-folder: #6fc4f7;
+}
