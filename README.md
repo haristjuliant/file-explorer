@@ -13,16 +13,21 @@ properties, because the Finder look needs precise control.
 
 | | |
 |---|---|
-| **Installer** | [`release/Finder_0.1.0_x64-setup.exe`](release/Finder_0.1.0_x64-setup.exe) — 2.6 MB, installs per-user, no administrator rights needed |
-| **Portable** | [`release/file-manager.exe`](release/file-manager.exe) — 11 MB, self-contained, run it from anywhere |
+| **Installer** | [`release/Finder_0.1.1_x64-setup.exe`](release/Finder_0.1.1_x64-setup.exe) — 2.7 MB, installs per-user, no administrator rights needed |
+| **Portable** | [`release/file-manager.exe`](release/file-manager.exe) — 11.0 MB, self-contained, run it from anywhere |
 
 Windows 10 or 11, 64-bit. WebView2 is already present on Windows 11; on older
 builds the installer fetches it automatically.
 
-> **Windows will warn you the first time.** The executable is not code-signed,
-> so SmartScreen shows *"Windows protected your PC"*. Click **More info** →
-> **Run anyway**. Removing that warning requires an Authenticode certificate,
-> which this project does not have.
+> **Windows will warn you the first time.** The executable is not
+> code-signed, so SmartScreen shows *"Windows protected your PC"*. Click
+> **More info** → **Run anyway**.
+>
+> On a machine with **Smart App Control** enforced the installer is blocked
+> outright rather than warned about, with no way past it short of turning
+> that feature off — which Windows permits only once, permanently. Removing
+> both obstacles requires an Authenticode certificate, which this project
+> does not have.
 
 ---
 
