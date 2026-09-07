@@ -58,6 +58,15 @@ codegen-units = 1
 panic         = "unwind"   # REQUIRED: we rely on catch_unwind around image/COM decoders
 strip         = "symbols"
 incremental   = false
+# NOTE: `strip` removes symbols but NOT the panic-location strings in .rdata,
+# so the binary carries the build machine's paths
+# (C:\Users\<name>\.cargo\registry\<crate>\src\lib.rs, mostly from third-party
+# crates). `trim-paths` would remove them but is still unstable as of Cargo
+# 1.98 -- setting it makes the build fail outright, so it is deliberately not
+# here. The stable workaround is RUSTFLAGS=--remap-path-prefix at build time,
+# which needs the literal paths of whichever machine is building and so cannot
+# be committed. Left as-is: every Rust binary ships these, and they disclose
+# only a directory layout, no credential.
 
 [profile.dev]
 opt-level = 1              # debug builds are otherwise unusable on 50k-entry directories

@@ -21,6 +21,22 @@ desktop.ini
 *.log
 npm-debug.log*
 
+# Credentials. Nothing here has ever been committed -- this is a guard so that
+# an .env dropped in for a quick test cannot be picked up by `git add -A`.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+.npmrc
+.netrc
+secrets.json
+credentials.json
+*.token
+
 # NOTE: release/ is deliberately NOT ignored -- the shipped installer and
 # portable executable are committed so they can be downloaded straight from
 # the repository. Future builds belong in a GitHub Release instead of here,
