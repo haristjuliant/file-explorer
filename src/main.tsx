@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import App from "./App";
 import { hydratePrefs } from "./store/persist";
@@ -21,10 +22,15 @@ createRoot(root).render(
 
 // The window starts hidden and appears only once there is something to show,
 // so launching never flashes an empty white rectangle.
+//
+// A static import: WindowControls already pulls this module in, so deferring it
+// here bought nothing and only split the chunk graph.
 requestAnimationFrame(() => {
-  void import("@tauri-apps/api/window")
-    .then(({ getCurrentWindow }) => getCurrentWindow().show())
-    .catch(() => {
-      /* outside Tauri there is no window to show */
-    });
+  try {
+    void getCurrentWindow()
+      .show()
+      .catch(() => {});
+  } catch {
+    /* outside Tauri there is no window to show */
+  }
 });

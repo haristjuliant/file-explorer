@@ -35,7 +35,7 @@ import {
   unionRange,
 } from "../order/selectionMath";
 import { initialDirFor, type SortDir, type SortKey } from "../lib/sort";
-import { normalize, parentOf, segments } from "../lib/path";
+import { normalize, parentOf } from "../lib/path";
 
 /** Sentinel occupying the trailing slot of the column chain when a file is selected. */
 export const PREVIEW_COLUMN = "";
@@ -181,12 +181,16 @@ interface UiSlice {
 
 export type AppStore = NavSlice & ViewSlice & SelectionSlice & ClipboardSlice & UiSlice;
 
-/** Chain of ancestor directories for column mode, root first. */
-function chainFor(path: string): string[] {
-  return segments(path).map((s) => s.path);
-}
-
-/** Everything that must reset when the user lands in a different directory. */
+/**
+ * Everything that must reset when the user lands in a different directory.
+ *
+ * The column chain becomes JUST that directory, not its whole ancestry. Landing
+ * somewhere -- from the sidebar, the breadcrumb, back/forward -- makes it the
+ * leftmost column, exactly as Finder does. Rebuilding the full ancestry instead
+ * would leave the strip already scrolled far to the right before the user has
+ * opened anything, which is the opposite of a fresh start. Arrow-left still
+ * walks upwards by prepending the parent.
+ */
 function resetForDirectory(path: string) {
   return {
     selection: new Set<string>(),
@@ -197,7 +201,7 @@ function resetForDirectory(path: string) {
     contextMenu: null,
     filterQuery: "",
     searchMode: "off" as const,
-    columnChain: chainFor(path),
+    columnChain: [path],
     treeRoots: [path],
   };
 }
@@ -296,10 +300,12 @@ export const useAppStore = create<AppStore>()(
       if (s.viewMode === "tree" && m !== "tree" && s.cursor) {
         cwd = parentOf(s.cursor) ?? s.cwd;
       }
+      // Switching into column view roots the strip at the current folder, for
+      // the same reason navigating does: a fresh view should start at the left.
       set({
         viewMode: m,
         cwd,
-        columnChain: chainFor(s.cursor && m === "column" ? (parentOf(s.cursor) ?? cwd) : cwd),
+        columnChain: [m === "column" && s.cursor ? (parentOf(s.cursor) ?? cwd) : cwd],
         treeRoots: [cwd],
       });
     },

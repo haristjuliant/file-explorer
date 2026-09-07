@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { QuickLook } from "../src/components/quicklook/QuickLook";
 import { useGlobalKeyboard } from "../src/keys/useGlobalKeyboard";
+import { orderRegistry } from "../src/order/registry";
 import { useAppStore } from "../src/store/appStore";
 
 /**
@@ -18,8 +19,26 @@ import { useAppStore } from "../src/store/appStore";
  *
  * If a view leaks view-specific knowledge into Quick Look, this fails.
  */
+
+/**
+ * Open whatever the cursor is on, mirroring what the real app does.
+ *
+ * A no-op stub here would make every Enter-key assertion in every view test
+ * pass vacuously, so the harness delegates to the active view exactly as
+ * `App` does. Files are the only difference: the app hands them to the shell,
+ * which a test has no business doing.
+ */
+function openCursor(): void {
+  const s = useAppStore.getState();
+  const cursor = s.cursor;
+  if (!cursor) return;
+  const entry = orderRegistry.get().entryOf(cursor);
+  if (!entry?.isDir) return;
+  if (!orderRegistry.source()?.activateDir?.(cursor)) s.navigate(cursor);
+}
+
 export function Harness({ view }: { view: ReactNode }) {
-  useGlobalKeyboard({ openCursor: () => {}, pageSize: () => 10 });
+  useGlobalKeyboard({ openCursor, pageSize: () => 10 });
   return (
     <>
       {view}

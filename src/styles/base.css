@@ -387,12 +387,21 @@ button {
 /* Rows, shared by list / column / tree                                      */
 /* ------------------------------------------------------------------------ */
 
+/*
+ * `.fm-row` carries APPEARANCE ONLY -- never layout.
+ *
+ * It used to set `display: flex`, `gap` and `padding` as well. Every view's own
+ * row class has the same specificity, so whichever rule the bundler happened to
+ * emit last won: `.fm-row` overrode `display: grid` on the list, tree and search
+ * rows, turning them into flex containers sized by content. The first column
+ * still lined up with its header because it sits at the left edge; everything
+ * after it drifted.
+ *
+ * Layout now belongs to the view that owns the row, so the two can no longer
+ * fight. `base.css.test.ts` fails if a layout property reappears here.
+ */
 .fm-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   height: var(--fm-row-h);
-  padding: 0 8px;
   white-space: nowrap;
   color: var(--fm-text);
 }

@@ -161,8 +161,17 @@ function Column({ dir, depth, width }: { dir: string; depth: number; width: numb
   const order = useMemo(() => makeOrder(dir, entries, entryPath), [dir, entries]);
   const buildOrder = useCallback(() => order, [order]);
 
+  /**
+   * Double-click or Enter on a folder OPENS it: the strip re-roots so that
+   * folder becomes the leftmost column.
+   *
+   * A single click, or an arrow key, deliberately does not -- that just spawns
+   * the next column to the right, which is how you browse. The two gestures
+   * mean different things, and conflating them is what leaves the strip
+   * scrolled far off to the right with no way back but manual scrolling.
+   */
   const onActivate = useCallback((path: string, isDir: boolean) => {
-    if (isDir) appState().select(path);
+    if (isDir) appState().navigate(path);
     // Opening files is handled by the shared Enter action in App.
   }, []);
 
@@ -214,11 +223,9 @@ function Column({ dir, depth, width }: { dir: string; depth: number; width: numb
     reveal: (i) => virtualizer.scrollToIndex(i, { align: "auto" }),
     onArrowRight: descend,
     onArrowLeft: ascend,
-    // Enter on a directory descends rather than changing the working directory,
-    // which is what column browsing means.
+    // Enter matches double-click: it opens the folder and re-roots the strip.
     activateDir: (p) => {
-      appState().select(p);
-      descend();
+      appState().navigate(p);
       return true;
     },
   });
@@ -317,30 +324,30 @@ export function ColumnView() {
   const chain = useAppStore(useShallow((s) => s.columnChain));
   const widths = useAppStore(useShallow((s) => s.columnWidths));
   const cursor = useAppStore((s) => s.cursor);
-  const cwd = useAppStore((s) => s.cwd);
 
   const stripRef = useRef<HTMLDivElement>(null);
-  /**
-   * Set only from real user input, never from `onScroll`.
-   *
-   * Our own smooth auto-scroll fires `scroll` events on its first frame, so
-   * flipping this flag there would silently disable auto-scroll for the rest of
-   * the session.
-   */
-  const userScrolled = useRef(false);
 
   useCursorDrivesChain();
 
-  // A new directory means a fresh chain, so hand control back to auto-scroll.
-  useEffect(() => {
-    userScrolled.current = false;
-  }, [cwd]);
-
+  /**
+   * Bring the newest column into view whenever the chain changes.
+   *
+   * Three things were wrong before. It latched a `userScrolled` flag that, once
+   * set, disabled auto-scroll for the rest of the session; it keyed off
+   * `chain.length`, so replacing the trailing column with a preview scrolled
+   * nowhere; and it read `scrollWidth` before the new column had been laid out.
+   *
+   * Scrolling the last element into view sidesteps all three: the browser knows
+   * where the element actually is, and because this only runs when the chain
+   * itself changes, scrolling by hand in between is never fought.
+   */
+  const chainKey = chain.join(" ");
   useEffect(() => {
     const el = stripRef.current;
-    if (!el || userScrolled.current) return;
-    el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
-  }, [chain.length]);
+    const last = el?.lastElementChild;
+    if (!(last instanceof HTMLElement)) return;
+    last.scrollIntoView({ inline: "end", block: "nearest", behavior: "smooth" });
+  }, [chainKey]);
 
   const previewEntry = useMemo(() => (cursor ? entryAt(cursor) : undefined), [cursor]);
 
@@ -350,14 +357,6 @@ export function ColumnView() {
       ref={stripRef}
       role="grid"
       aria-label="Columns"
-      onWheel={() => {
-        userScrolled.current = true;
-      }}
-      onPointerDown={(e) => {
-        // A drag on the strip itself (scrollbar or empty space) is the user
-        // taking over; a click on a row is not.
-        if (e.target === e.currentTarget) userScrolled.current = true;
-      }}
     >
       {chain.map((path, i) =>
         path === PREVIEW_COLUMN ? (

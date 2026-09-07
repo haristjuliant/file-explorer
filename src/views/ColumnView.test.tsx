@@ -38,7 +38,6 @@ function entry(name: string, over: Partial<DirEntry> = {}): DirEntry {
 const folder = (name: string) =>
   entry(name, { isDir: true, category: "folder", ext: "", size: 0 });
 
-/** A small three-level tree, so descending and ascending both have somewhere to go. */
 const TREE: Record<string, DirEntry[]> = {
   [`C:${D}`]: [folder("Users"), folder("Windows")],
   [ROOT]: [folder("Public"), folder("User")],
@@ -101,7 +100,7 @@ function mockBackend() {
   });
 }
 
-/** Mount column view at `USER`, whose chain is C:\ -> C:\Users -> C:\Users\User. */
+/** Mount column view rooted at `C:\Users\User`. */
 async function mount() {
   mockBackend();
   useAppStore.setState({ ...INITIAL, viewMode: "column" }, true);
@@ -109,7 +108,7 @@ async function mount() {
 
   const user = userEvent.setup();
   render(<Harness view={<ColumnView />} />);
-  await waitFor(() => expect(screen.getAllByRole("row").length).toBeGreaterThan(2));
+  await waitFor(() => expect(screen.getByText("notes.txt")).toBeInTheDocument());
   return user;
 }
 
@@ -125,34 +124,49 @@ beforeEach(() => {
   useAppStore.setState(INITIAL, true);
 });
 
-describe("ColumnView layout", () => {
-  it("renders one column per ancestor of the current directory", async () => {
+describe("ColumnView roots at the folder you arrived in", () => {
+  it("opens with a single column, not the whole ancestry", async () => {
     await mount();
-    expect(s().columnChain).toEqual([`C:${D}`, ROOT, USER]);
-    await waitFor(() => expect(columnCount()).toBe(3));
+    // Rebuilding C:\ -> C:\Users -> C:\Users\User would leave the strip already
+    // scrolled to the right before the user has opened anything.
+    expect(s().columnChain).toEqual([USER]);
+    await waitFor(() => expect(columnCount()).toBe(1));
   });
 
-  it("shows each column's own contents", async () => {
+  it("shows that folder's contents", async () => {
     await mount();
-    await waitFor(() => expect(screen.getByText("Windows")).toBeInTheDocument());
-    expect(screen.getByText("Public")).toBeInTheDocument();
+    expect(screen.getByText("Documents")).toBeInTheDocument();
     expect(screen.getByText("notes.txt")).toBeInTheDocument();
+    // Nothing from a parent folder is on screen.
+    expect(screen.queryByText("Public")).not.toBeInTheDocument();
   });
 
   it("marks directory rows with a chevron and files without one", async () => {
     await mount();
-    await waitFor(() => expect(screen.getByText("Documents")).toBeInTheDocument());
     expect(rowByName("Documents").querySelector(".fm-chevron-right")).not.toBeNull();
     expect(rowByName("notes.txt").querySelector(".fm-chevron-right")).toBeNull();
   });
+
+  it("re-roots when the user navigates, however deep the strip had grown", async () => {
+    const user = await mount();
+    await user.click(rowByName("Documents"));
+    await waitFor(() => expect(s().columnChain).toEqual([USER, DOCS]));
+
+    // What clicking a sidebar place does.
+    s().navigate(DOCS);
+    await waitFor(() => expect(s().columnChain).toEqual([DOCS]));
+    await waitFor(() => expect(columnCount()).toBe(1));
+  });
 });
 
-describe("ColumnView chain behaviour", () => {
-  it("selecting a folder spawns the next column", async () => {
+describe("browsing versus opening", () => {
+  it("a single click spawns the next column and keeps the root", async () => {
     const user = await mount();
     await user.click(rowByName("Documents"));
 
-    await waitFor(() => expect(s().columnChain).toEqual([`C:${D}`, ROOT, USER, DOCS]));
+    await waitFor(() => expect(s().columnChain).toEqual([USER, DOCS]));
+    // Browsing must not move the working directory.
+    expect(s().cwd).toBe(USER);
     await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());
   });
 
@@ -160,36 +174,50 @@ describe("ColumnView chain behaviour", () => {
     const user = await mount();
     await user.click(rowByName("notes.txt"));
 
-    await waitFor(() => expect(s().columnChain[3]).toBe(PREVIEW_COLUMN));
+    await waitFor(() => expect(s().columnChain).toEqual([USER, PREVIEW_COLUMN]));
     await waitFor(() =>
       expect(screen.getByText(`contents of ${USER}${D}notes.txt`)).toBeInTheDocument(),
     );
   });
 
-  it("moving back to a folder truncates the columns to its right", async () => {
+  it("a double click OPENS the folder and re-roots the strip", async () => {
     const user = await mount();
-    await user.click(rowByName("Documents"));
-    await waitFor(() => expect(s().columnChain).toHaveLength(4));
+    await user.dblClick(rowByName("Documents"));
 
-    await user.click(rowByName("notes.txt"));
-    // The Documents column is replaced by the preview, not kept alongside it.
-    await waitFor(() => expect(s().columnChain).toHaveLength(4));
-    expect(s().columnChain[3]).toBe(PREVIEW_COLUMN);
+    await waitFor(() => expect(s().cwd).toBe(DOCS));
+    expect(s().columnChain).toEqual([DOCS]);
+    await waitFor(() => expect(columnCount()).toBe(1));
+    await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());
   });
 
-  it("right arrow descends into the first child of the next column", async () => {
+  it("Enter opens the folder the same way a double click does", async () => {
     const user = await mount();
     s().select(`${USER}${D}Documents`);
-    await waitFor(() => expect(s().columnChain).toHaveLength(4));
+    await waitFor(() => expect(orderRegistry.get().paths.length).toBe(3));
+
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(s().cwd).toBe(DOCS));
+    expect(s().columnChain).toEqual([DOCS]);
+  });
+
+  it("an arrow key browses without re-rooting", async () => {
+    const user = await mount();
+    s().select(`${USER}${D}Documents`);
+    await waitFor(() => expect(s().columnChain).toEqual([USER, DOCS]));
 
     await user.keyboard("{ArrowRight}");
     await waitFor(() => expect(s().cursor).toBe(`${DOCS}${D}alpha.txt`));
+    // Still browsing: the root and the working directory are untouched.
+    expect(s().cwd).toBe(USER);
+    expect(s().columnChain[0]).toBe(USER);
   });
+});
 
+describe("keyboard navigation within the strip", () => {
   it("left arrow puts the cursor back on the folder one column left", async () => {
     const user = await mount();
     s().select(`${USER}${D}Documents`);
-    await waitFor(() => expect(s().columnChain).toHaveLength(4));
+    await waitFor(() => expect(s().columnChain).toHaveLength(2));
     await user.keyboard("{ArrowRight}");
     await waitFor(() => expect(s().cursor).toBe(`${DOCS}${D}alpha.txt`));
 
@@ -200,14 +228,13 @@ describe("ColumnView chain behaviour", () => {
   it("remembers which child was last selected, as Finder does", async () => {
     const user = await mount();
     s().select(`${USER}${D}Documents`);
-    await waitFor(() => expect(s().columnChain).toHaveLength(4));
+    await waitFor(() => expect(s().columnChain).toHaveLength(2));
 
     await user.keyboard("{ArrowRight}");
     await waitFor(() => expect(s().cursor).toBe(`${DOCS}${D}alpha.txt`));
     await user.keyboard("{ArrowDown}{ArrowDown}");
     expect(s().cursor).toBe(`${DOCS}${D}gamma.txt`);
 
-    // Go left, then right again: Finder returns you to gamma, not alpha.
     await user.keyboard("{ArrowLeft}");
     await waitFor(() => expect(s().cursor).toBe(`${USER}${D}Documents`));
     await user.keyboard("{ArrowRight}");
@@ -216,14 +243,12 @@ describe("ColumnView chain behaviour", () => {
 
   it("left arrow at the leftmost column brings the parent into view", async () => {
     const user = await mount();
-    // Put the cursor in the very first column.
-    s().select(`C:${D}Users`);
-    await waitFor(() => expect(s().cursor).toBe(ROOT));
+    s().select(`${USER}${D}notes.txt`);
+    await waitFor(() => expect(s().cursor).toBe(`${USER}${D}notes.txt`));
 
     await user.keyboard("{ArrowLeft}");
-    // C:\ has no parent, so the chain is unchanged rather than growing a
-    // bogus column -- the guard that keeps this from looping.
-    await waitFor(() => expect(s().columnChain[0]).toBe(`C:${D}`));
+    // Walking up is how you leave the root you landed on.
+    await waitFor(() => expect(s().columnChain[0]).toBe(ROOT));
   });
 
   it("keeps up and down inside one column", async () => {
@@ -235,52 +260,75 @@ describe("ColumnView chain behaviour", () => {
     expect(s().cursor).toBe(`${USER}${D}notes.txt`);
     await user.keyboard("{ArrowDown}");
     expect(s().cursor).toBe(`${USER}${D}todo.txt`);
-    // Clamped at the end of THIS column, never spilling into another.
     await user.keyboard("{ArrowDown}");
     expect(s().cursor).toBe(`${USER}${D}todo.txt`);
   });
 
   it("publishes only the column holding the cursor", async () => {
-    await mount();
-    s().select(`${USER}${D}notes.txt`);
-    await waitFor(() => {
-      const paths = orderRegistry.get().paths;
-      expect(paths).toContain(`${USER}${D}notes.txt`);
-      // Not the sibling column's contents.
-      expect(paths).not.toContain(`${ROOT}${D}Public`);
-    });
+    const user = await mount();
+    await user.click(rowByName("Documents"));
+    await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());
 
-    s().select(`${ROOT}${D}Public`);
+    s().select(`${DOCS}${D}beta.txt`);
     await waitFor(() => {
       const paths = orderRegistry.get().paths;
-      expect(paths).toContain(`${ROOT}${D}Public`);
+      expect(paths).toContain(`${DOCS}${D}beta.txt`);
       expect(paths).not.toContain(`${USER}${D}notes.txt`);
     });
   });
 });
 
-describe("Quick Look in column view", () => {
-  it("satisfies the same contract as list view, with no Quick Look changes", async () => {
+describe("horizontal auto-scroll", () => {
+  it("brings the newest column into view when the chain grows", async () => {
+    const scrollIntoView = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
     const user = await mount();
-    // Order inside the User column: Documents (folder first), notes, todo.
+    scrollIntoView.mockClear();
+
+    await user.click(rowByName("Documents"));
+
+    // Without this the user has to scroll by hand as soon as the strip is
+    // wider than the window.
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    expect(scrollIntoView.mock.calls[0][0]).toMatchObject({ inline: "end" });
+    scrollIntoView.mockRestore();
+  });
+
+  it("also scrolls when the trailing column becomes a preview", async () => {
+    // The old implementation keyed off chain LENGTH, so swapping a folder
+    // column for a preview of the same length scrolled nowhere.
+    const user = await mount();
+    await user.click(rowByName("Documents"));
+    await waitFor(() => expect(s().columnChain).toHaveLength(2));
+
+    const scrollIntoView = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
+    await user.click(rowByName("notes.txt"));
+    await waitFor(() => expect(s().columnChain).toEqual([USER, PREVIEW_COLUMN]));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    scrollIntoView.mockRestore();
+  });
+
+  it("keeps scrolling on later changes rather than latching off", async () => {
+    // The old flag, once set by a wheel event, disabled auto-scroll for the
+    // rest of the session.
+    const user = await mount();
+    await user.click(rowByName("Documents"));
+    await waitFor(() => expect(screen.getByText("alpha.txt")).toBeInTheDocument());
+
+    const scrollIntoView = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
+    s().navigate(DOCS);
+    await waitFor(() => expect(s().columnChain).toEqual([DOCS]));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    scrollIntoView.mockRestore();
+  });
+});
+
+describe("Quick Look in column view", () => {
+  it("satisfies the same contract as list, tree and search view", async () => {
+    const user = await mount();
     await assertQuickLookContract({
       user,
       startPath: `${USER}${D}Documents`,
       expectedForward: ["Documents", "notes.txt", "todo.txt"],
     });
-  });
-
-  it("steps within the column that holds the cursor, not across columns", async () => {
-    const user = await mount();
-    s().select(`${USER}${D}Documents`);
-    await waitFor(() => expect(s().columnChain).toHaveLength(4));
-    await user.keyboard("{ArrowRight}");
-    await waitFor(() => expect(s().cursor).toBe(`${DOCS}${D}alpha.txt`));
-
-    await user.keyboard(" ");
-    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
-    await user.keyboard("{ArrowDown}");
-    // beta, not something from the User column.
-    await waitFor(() => expect(s().cursor).toBe(`${DOCS}${D}beta.txt`));
   });
 });

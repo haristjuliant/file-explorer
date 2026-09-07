@@ -272,9 +272,12 @@ describe("navigation", () => {
     expect(s().filterQuery).toBe("");
   });
 
-  it("builds the column chain from the ancestors of the new directory", () => {
+  it("roots the column chain at the new directory, not its ancestry", () => {
+    // Arriving somewhere makes it the leftmost column. Rebuilding the whole
+    // ancestry would leave the column strip scrolled far right before the user
+    // has opened anything.
     s().navigate(ROOT);
-    expect(s().columnChain).toEqual([`C:${D}`, `C:${D}Users`, ROOT]);
+    expect(s().columnChain).toEqual([ROOT]);
   });
 
   it("up goes to the parent and stops at the drive root", () => {
@@ -357,8 +360,12 @@ describe("tree expansion", () => {
 describe("column chain", () => {
   it("pushing at a depth truncates everything to its right", () => {
     s().navigate(ROOT);
-    s().pushColumn(1, `C:${D}Windows`);
-    expect(s().columnChain).toEqual([`C:${D}`, `C:${D}Windows`]);
+    s().pushColumn(1, `${ROOT}${D}Documents`);
+    s().pushColumn(2, `${ROOT}${D}Documents${D}Deep`);
+    expect(s().columnChain).toHaveLength(3);
+
+    s().pushColumn(1, `${ROOT}${D}Other`);
+    expect(s().columnChain).toEqual([ROOT, `${ROOT}${D}Other`]);
   });
 
   it("selecting a file puts the preview sentinel in the trailing slot", () => {
@@ -367,15 +374,29 @@ describe("column chain", () => {
     expect(s().columnChain[3]).toBe(PREVIEW_COLUMN);
   });
 
-  it("prepending the parent is a no-op when it is already leftmost", () => {
+  it("prepending the parent puts it to the left of the current root", () => {
     s().navigate(ROOT);
-    const before = s().columnChain.length;
-    s().prependColumn(`C:${D}`);
-    expect(s().columnChain.length).toBe(before);
+    expect(s().columnChain).toEqual([ROOT]);
+
+    // How arrow-left at the leftmost column walks upwards.
+    s().prependColumn(`C:${D}Users`);
+    expect(s().columnChain).toEqual([`C:${D}Users`, ROOT]);
+  });
+
+  it("prepending is a no-op when that folder is already leftmost", () => {
+    s().navigate(ROOT);
+    s().prependColumn(ROOT);
+    expect(s().columnChain).toEqual([ROOT]);
   });
 });
 
 describe("view mode handoff", () => {
+  it("roots the column strip at the current folder when switching to it", () => {
+    useAppStore.setState({ viewMode: "list", cwd: ROOT, cursor: null });
+    s().setViewMode("column");
+    expect(s().columnChain).toEqual([ROOT]);
+  });
+
   it("uses the cursor's parent as the new directory when leaving tree mode", () => {
     const deep = `${ROOT}${D}Documents${D}Projects${D}app.tsx`;
     useAppStore.setState({ viewMode: "tree", cwd: ROOT, cursor: deep });
