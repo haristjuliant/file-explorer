@@ -10,7 +10,8 @@ vi.mock("@tauri-apps/api/core", () => ({
   convertFileSrc: (p: string) => `http://asset.localhost/${encodeURIComponent(p)}`,
 }));
 
-const { ColumnView, columnViewDebug } = await import("./ColumnView");
+const { ColumnView } = await import("./ColumnView");
+const { resetColumnMemory } = await import("./columnMemory");
 const { useAppStore, PREVIEW_COLUMN } = await import("../store/appStore");
 const { orderRegistry } = await import("../order/registry");
 const { fsCacheDebug } = await import("../store/fsStore");
@@ -38,11 +39,16 @@ function entry(name: string, over: Partial<DirEntry> = {}): DirEntry {
 const folder = (name: string) =>
   entry(name, { isDir: true, category: "folder", ext: "", size: 0 });
 
+/** Longer than any column may become, so the cap and the elision both apply. */
+const LONG_NAME =
+  "quarterly-revenue-breakdown-by-region-and-product-line-with-appendices-2026-final-approved-v7.xlsx";
+
 const TREE: Record<string, DirEntry[]> = {
   [`C:${D}`]: [folder("Users"), folder("Windows")],
   [ROOT]: [folder("Public"), folder("User")],
-  [USER]: [folder("Documents"), entry("notes.txt"), entry("todo.txt")],
+  [USER]: [folder("Documents"), folder("Wide"), entry("notes.txt"), entry("todo.txt")],
   [DOCS]: [entry("alpha.txt"), entry("beta.txt"), entry("gamma.txt")],
+  [`${USER}${D}Wide`]: [entry(LONG_NAME, { ext: "xlsx", category: "spreadsheet" })],
 };
 
 function textPlan(path: string): PreviewPlan {
@@ -120,7 +126,7 @@ beforeEach(() => {
   fsCacheDebug.reset();
   watchDebug.reset();
   orderRegistry.reset();
-  columnViewDebug.resetLastChild();
+  resetColumnMemory();
   useAppStore.setState(INITIAL, true);
 });
 
@@ -193,7 +199,7 @@ describe("browsing versus opening", () => {
   it("Enter opens the folder the same way a double click does", async () => {
     const user = await mount();
     s().select(`${USER}${D}Documents`);
-    await waitFor(() => expect(orderRegistry.get().paths.length).toBe(3));
+    await waitFor(() => expect(orderRegistry.get().paths.length).toBe(4));
 
     await user.keyboard("{Enter}");
     await waitFor(() => expect(s().cwd).toBe(DOCS));
@@ -254,11 +260,11 @@ describe("keyboard navigation within the strip", () => {
   it("keeps up and down inside one column", async () => {
     const user = await mount();
     s().select(`${USER}${D}Documents`);
-    await waitFor(() => expect(orderRegistry.get().paths.length).toBe(3));
+    await waitFor(() => expect(orderRegistry.get().paths.length).toBe(4));
 
     await user.keyboard("{ArrowDown}");
-    expect(s().cursor).toBe(`${USER}${D}notes.txt`);
-    await user.keyboard("{ArrowDown}");
+    expect(s().cursor).toBe(`${USER}${D}Wide`);
+    await user.keyboard("{ArrowDown}{ArrowDown}");
     expect(s().cursor).toBe(`${USER}${D}todo.txt`);
     await user.keyboard("{ArrowDown}");
     expect(s().cursor).toBe(`${USER}${D}todo.txt`);
@@ -328,7 +334,82 @@ describe("Quick Look in column view", () => {
     await assertQuickLookContract({
       user,
       startPath: `${USER}${D}Documents`,
-      expectedForward: ["Documents", "notes.txt", "todo.txt"],
+      expectedForward: ["Documents", "Wide", "notes.txt"],
     });
+  });
+});
+
+describe("column width and long names", () => {
+  const widthOf = (index: number) =>
+    parseFloat(
+      (document.querySelectorAll<HTMLElement>(".fm-column")[index]?.style.width ?? "0").replace(
+        "px",
+        "",
+      ),
+    );
+
+  it("sizes a column to its longest entry rather than a fixed width", async () => {
+    const user = await mount();
+    const narrow = widthOf(0);
+
+    await user.click(rowByName("Wide"));
+    await waitFor(() => expect(document.querySelectorAll(".fm-column").length).toBe(2));
+
+    // The column holding a very long name is wider than the one holding short
+    // ones -- that is the whole point of measuring.
+    await waitFor(() => expect(widthOf(1)).toBeGreaterThan(narrow));
+  });
+
+  it("caps the width so one absurd name cannot swallow the window", async () => {
+    const user = await mount();
+    await user.click(rowByName("Wide"));
+    await waitFor(() => expect(document.querySelectorAll(".fm-column").length).toBe(2));
+
+    // Windows allows 255-character names; honouring one would push every other
+    // column off-screen.
+    await waitFor(() => expect(widthOf(1)).toBeLessThanOrEqual(400));
+    expect(widthOf(1)).toBeGreaterThanOrEqual(150);
+  });
+
+  it("never goes below the minimum, even for a folder of one-letter names", async () => {
+    await mount();
+    expect(widthOf(0)).toBeGreaterThanOrEqual(150);
+  });
+
+  it("elides the middle of a name that does not fit, keeping both ends", async () => {
+    const user = await mount();
+    await user.click(rowByName("Wide"));
+
+    const row = await waitFor(() => {
+      const el = document.querySelectorAll<HTMLElement>(".fm-column")[1]?.querySelector(".fm-name");
+      expect(el).not.toBeNull();
+      return el as HTMLElement;
+    });
+
+    const shown = row.textContent ?? "";
+    expect(shown).not.toBe(LONG_NAME);
+    expect(shown).toContain("…");
+    expect(shown.startsWith("quarterly")).toBe(true);
+    // An end-ellipsis would have taken the extension; a middle one keeps it.
+    expect(shown.endsWith("xlsx")).toBe(true);
+  });
+
+  it("keeps the whole name in the tooltip, so nothing is truly hidden", async () => {
+    const user = await mount();
+    await user.click(rowByName("Wide"));
+
+    const row = await waitFor(() => {
+      const el = document.querySelectorAll<HTMLElement>(".fm-column")[1]?.querySelector(".fm-name");
+      expect(el?.getAttribute("title")).toBeTruthy();
+      return el as HTMLElement;
+    });
+    expect(row.getAttribute("title")).toBe(LONG_NAME);
+  });
+
+  it("leaves a name that fits alone, with no tooltip", async () => {
+    await mount();
+    const el = screen.getByText("notes.txt");
+    expect(el.textContent).toBe("notes.txt");
+    expect(el.getAttribute("title")).toBeNull();
   });
 });

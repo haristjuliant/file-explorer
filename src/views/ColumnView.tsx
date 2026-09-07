@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useShallow } from "zustand/react/shallow";
 
@@ -7,28 +7,47 @@ import { FileIcon, Glyph } from "../components/common/Icon";
 import type { DirEntry } from "../ipc/types";
 import { Attr, hasFlag } from "../ipc/types";
 import { entryPath, parentOf } from "../lib/path";
+import {
+  columnWidthCap,
+  createMeasurer,
+  fitColumnWidth,
+  fontOf,
+  middleTruncate,
+  MIN_COLUMN_W,
+  type Measure,
+} from "../lib/textFit";
 import { visibleSorted } from "../lib/sort";
 import { makeOrder } from "../order/registry";
 import { usePublishOrderIf } from "../order/usePublishOrder";
 import { appState, PREVIEW_COLUMN, useAppStore } from "../store/appStore";
 import { ensureDir, useFsStore } from "../store/fsStore";
+import { recallChild, rememberChild } from "./columnMemory";
 import { DirStates } from "./DirStates";
 import { RenameInput, ROW_H } from "./ListView";
 import { useRetainedDir, useVisibleEntries } from "./useVisibleEntries";
 
 import "./column.css";
 
-const DEFAULT_COLUMN_W = 220;
 const PREVIEW_COLUMN_W = 300;
 
 /**
- * Which child was last selected in each directory.
+ * A column sizes itself to its longest entry, within these bounds.
  *
- * Finder remembers this: go back to the left and forward again, and you land on
- * the same item. Module state rather than store state because it is a memory
- * aid, not something any component should re-render for.
+ * The maximum is the judgement call. Windows allows 255-character names, and a
+ * column that honoured one would swallow the whole window and push everything
+ * else off-screen. 400px fits roughly fifty characters of the UI font, which
+ * covers the overwhelming majority of real names; anything longer is elided in
+ * the middle instead, so the start AND the extension both stay readable.
  */
-const lastChildOf = new Map<string, string>();
+
+
+/**
+ * Everything in a row that is not the name: left padding, icon, two gaps, the
+ * disclosure chevron, right padding, and the reserved scrollbar gutter. Measured
+ * against `column.css`; the chevron is counted even for files so a folder and a
+ * file of the same name never disagree about the column width.
+ */
+const ROW_CHROME = 64;
 
 /* ------------------------------------------------------------------------- */
 
@@ -36,15 +55,32 @@ interface ColumnRowProps {
   entry: DirEntry;
   path: string;
   top: number;
+  /** Pixels available to the name, once the row chrome is accounted for. */
+  nameWidth: number;
+  measure: Measure;
   onActivate(path: string, isDir: boolean): void;
 }
 
-const ColumnRow = memo(function ColumnRow({ entry, path, top, onActivate }: ColumnRowProps) {
+const ColumnRow = memo(function ColumnRow({
+  entry,
+  path,
+  top,
+  nameWidth,
+  measure,
+  onActivate,
+}: ColumnRowProps) {
   const selected = useAppStore((s) => s.selection.has(path));
   const isCursor = useAppStore((s) => s.cursor === path);
   const cut = useAppStore((s) => s.clipboard?.mode === "cut" && s.clipboard.paths.includes(path));
   const renaming = useAppStore((s) => s.renamingPath === path);
   const dimmed = hasFlag(entry.flags, Attr.Hidden) || hasFlag(entry.flags, Attr.System);
+
+  // Elided in the middle rather than at the end: `text-overflow: ellipsis`
+  // would take the extension with it, which is the half worth keeping.
+  const shown = useMemo(
+    () => middleTruncate(entry.name, nameWidth, measure),
+    [entry.name, nameWidth, measure],
+  );
 
   return (
     <div
@@ -76,7 +112,10 @@ const ColumnRow = memo(function ColumnRow({ entry, path, top, onActivate }: Colu
       {renaming ? (
         <RenameInput path={path} name={entry.name} />
       ) : (
-        <span className="fm-name">{entry.name}</span>
+        // The full name stays in the tooltip, so nothing is truly hidden.
+        <span className="fm-name" title={shown === entry.name ? undefined : entry.name}>
+          {shown}
+        </span>
       )}
       {/* The Finder affordance that says "there is more to the right". */}
       {entry.isDir && (
@@ -93,8 +132,8 @@ const ColumnRow = memo(function ColumnRow({ entry, path, top, onActivate }: Colu
 function ColumnResizer({ depth }: { depth: number }) {
   const setColumnWidth = useAppStore((s) => s.setColumnWidth);
   const startX = useRef(0);
-  const startW = useRef(DEFAULT_COLUMN_W);
-  const live = useRef(DEFAULT_COLUMN_W);
+  const startW = useRef(MIN_COLUMN_W);
+  const live = useRef(MIN_COLUMN_W);
   const selfRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -107,7 +146,7 @@ function ColumnResizer({ depth }: { depth: number }) {
         e.stopPropagation();
         e.currentTarget.setPointerCapture(e.pointerId);
         const column = selfRef.current?.parentElement;
-        startW.current = column?.getBoundingClientRect().width ?? DEFAULT_COLUMN_W;
+        startW.current = column?.getBoundingClientRect().width ?? MIN_COLUMN_W;
         live.current = startW.current;
         startX.current = e.clientX;
       }}
@@ -131,7 +170,20 @@ function ColumnResizer({ depth }: { depth: number }) {
 
 /* ------------------------------------------------------------------------- */
 
-function Column({ dir, depth, width }: { dir: string; depth: number; width: number }) {
+function Column({
+  dir,
+  depth,
+  userWidth,
+  measure,
+  maxWidth,
+}: {
+  dir: string;
+  depth: number;
+  /** Set once the user has dragged this column's separator; it then wins. */
+  userWidth: number | undefined;
+  measure: Measure;
+  maxWidth: number;
+}) {
   const state = useRetainedDir(dir);
   const entries = useVisibleEntries(dir);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -161,6 +213,19 @@ function Column({ dir, depth, width }: { dir: string; depth: number; width: numb
   const order = useMemo(() => makeOrder(dir, entries, entryPath), [dir, entries]);
   const buildOrder = useCallback(() => order, [order]);
 
+  // Sized to the longest entry, unless the user has said otherwise by dragging.
+  const autoWidth = useMemo(
+    () =>
+      fitColumnWidth(
+        entries.map((e) => e.name),
+        measure,
+        { chrome: ROW_CHROME, min: MIN_COLUMN_W, max: maxWidth },
+      ),
+    [entries, measure, maxWidth],
+  );
+  const width = userWidth ?? autoWidth;
+  const nameWidth = Math.max(0, width - ROW_CHROME);
+
   /**
    * Double-click or Enter on a folder OPENS it: the strip re-roots so that
    * folder becomes the leftmost column.
@@ -189,7 +254,7 @@ function Column({ dir, depth, width }: { dir: string; depth: number; width: numb
       const visible = visibleSorted(child.entries, viewOpts);
       if (visible.length === 0) return;
 
-      const remembered = lastChildOf.get(c);
+      const remembered = recallChild(c);
       const target =
         remembered && visible.some((e) => entryPath(c, e) === remembered)
           ? remembered
@@ -247,6 +312,8 @@ function Column({ dir, depth, width }: { dir: string; depth: number; width: numb
                 entry={entries[vi.index]}
                 path={String(vi.key)}
                 top={vi.start}
+                nameWidth={nameWidth}
+                measure={measure}
                 onActivate={onActivate}
               />
             ))}
@@ -298,7 +365,7 @@ function useCursorDrivesChain() {
         const depth = s.columnChain.indexOf(parent);
         if (depth < 0) return;
 
-        lastChildOf.set(parent, cursor);
+        rememberChild(parent, cursor);
 
         const entry = entryAt(cursor);
         if (!entry) return;
@@ -309,23 +376,36 @@ function useCursorDrivesChain() {
   }, []);
 }
 
-/**
- * Test hook for the module-level `lastChildOf` memory.
- *
- * Module state survives between test cases in a file, so one case's remembered
- * child would silently change what a later case sees. Anything module-scoped
- * needs a reset like this.
- */
-export const columnViewDebug = {
-  resetLastChild: () => lastChildOf.clear(),
-};
-
 export function ColumnView() {
   const chain = useAppStore(useShallow((s) => s.columnChain));
   const widths = useAppStore(useShallow((s) => s.columnWidths));
   const cursor = useAppStore((s) => s.cursor);
 
   const stripRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * One canvas measurer for the whole strip, built from the font the rows are
+   * actually rendered with rather than a guess.
+   */
+  const [measure, setMeasure] = useState<Measure>(() => createMeasurer(fontOf(null)));
+  useEffect(() => {
+    const row = stripRef.current?.querySelector(".fm-column-row") ?? stripRef.current;
+    const next = createMeasurer(fontOf(row));
+    setMeasure(() => next);
+  }, []);
+
+  // The strip's own width, so no column may take more than its share of it.
+  const [stripWidth, setStripWidth] = useState(0);
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([e]) => {
+      setStripWidth(e?.contentRect.width ?? el.clientWidth);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const maxWidth = columnWidthCap(stripWidth);
 
   useCursorDrivesChain();
 
@@ -341,7 +421,7 @@ export function ColumnView() {
    * where the element actually is, and because this only runs when the chain
    * itself changes, scrolling by hand in between is never fought.
    */
-  const chainKey = chain.join(" ");
+  const chainKey = chain.join("\u0000");
   useEffect(() => {
     const el = stripRef.current;
     const last = el?.lastElementChild;
@@ -368,7 +448,14 @@ export function ColumnView() {
             <PreviewBody path={cursor} entry={previewEntry} variant="column" />
           </div>
         ) : (
-          <Column key={path} dir={path} depth={i} width={widths[i] ?? DEFAULT_COLUMN_W} />
+          <Column
+            key={path}
+            dir={path}
+            depth={i}
+            userWidth={widths[i]}
+            measure={measure}
+            maxWidth={maxWidth}
+          />
         ),
       )}
     </div>
