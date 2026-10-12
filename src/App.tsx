@@ -20,6 +20,7 @@ import {
   deletePermanently,
   duplicateEntries,
   knownFolders,
+  newWindow as newWindowIpc,
   openPath,
   revealInExplorer,
   trashEntries,
@@ -216,6 +217,10 @@ export default function App() {
     }
   }, [toast]);
 
+  const newWindow = useCallback(() => {
+    void newWindowIpc().catch((e: FsError) => toast("error", e.message));
+  }, [toast]);
+
   const newFolder = useCallback(() => {
     if (!cwd) return;
     void (async () => {
@@ -330,6 +335,7 @@ export default function App() {
   const deps: Partial<KeyDeps> = {
     openCursor,
     newFolder,
+    newWindow,
     deleteSelection,
     paste,
     duplicateSelection,
@@ -426,6 +432,7 @@ export default function App() {
       },
       sep("sep3"),
       { id: "newfolder", label: "New Folder", shortcut: "Ctrl+Shift+N", run: newFolder },
+      { id: "newwindow", label: "New Window", shortcut: "Ctrl+N", run: newWindow },
       {
         id: "reveal",
         label: "Reveal in Explorer",
@@ -444,7 +451,7 @@ export default function App() {
         run: () => deleteSelection(false),
       },
     ];
-  }, [contextMenu, openCursor, duplicateSelection, paste, newFolder, deleteSelection]);
+  }, [contextMenu, openCursor, duplicateSelection, paste, newFolder, newWindow, deleteSelection]);
 
   return (
     <div className="fm-app">

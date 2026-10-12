@@ -79,6 +79,7 @@ pub fn run() {
             commands::watch::unwatch_dir,
             commands::watch::watch_count,
             commands::window::set_caption_button_rect,
+            commands::window::new_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

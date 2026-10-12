@@ -75,6 +75,11 @@ export function revealInExplorer(path: string): Promise<void> {
   return call<void>("reveal_in_explorer", { path: normalize(path) });
 }
 
+/** Opens another top-level window onto the same app, e.g. from Ctrl+N. */
+export function newWindow(): Promise<void> {
+  return call<void>("new_window");
+}
+
 /**
  * The file list currently on the Windows clipboard, if any -- what lets
  * Ctrl+V paste files that were copied or cut in Explorer (or any other app)

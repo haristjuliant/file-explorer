@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/windows-schema.json",
   "identifier": "default",
-  "description": "Core window, event and path access for the main window. No plugins: opening files uses our own ShellExecuteW command, and all dialogs are in-app React modals.",
-  "windows": ["main"],
+  "description": "Core window, event and path access for the main window, plus any window `new_window` opens (labels `window-*`). No plugins: opening files uses our own ShellExecuteW command, and all dialogs are in-app React modals.",
+  "windows": ["main", "window-*"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",

@@ -27,6 +27,7 @@ export interface KeyDeps {
   openCursor(): void;
   renameCursor(): void;
   newFolder(): void;
+  newWindow(): void;
   deleteSelection(permanent: boolean): void;
   paste(): void;
   duplicateSelection(): void;
@@ -281,6 +282,13 @@ export const BINDINGS: Binding[] = [
     label: "New folder",
     group: "Edit",
     run: (_c, deps) => call(deps, "newFolder"),
+  },
+  {
+    id: "window.new",
+    combo: "ctrl+n",
+    label: "New window",
+    group: "Edit",
+    run: (_c, deps) => call(deps, "newWindow"),
   },
   {
     id: "edit.duplicate",
