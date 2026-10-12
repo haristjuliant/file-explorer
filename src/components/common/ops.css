@@ -32,6 +32,13 @@
 .fm-menu-item--danger:hover:not(:disabled) {
   background: var(--fm-danger);
 }
+.fm-menu-check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 14px;
+  color: currentColor;
+}
 .fm-menu-shortcut {
   margin-left: auto;
   padding-left: 20px;

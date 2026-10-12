@@ -25,6 +25,8 @@ export interface MenuAction {
   shortcut?: string;
   danger?: boolean;
   disabled?: boolean;
+  /** Renders a checkmark in front of the label, for a toggleable setting. */
+  checked?: boolean;
   run(): void;
 }
 
@@ -84,26 +86,38 @@ export function ContextMenu({
         style={{ left: pos?.x ?? menu.x, top: pos?.y ?? menu.y, visibility: pos ? "visible" : "hidden" }}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        {actions.map((a) =>
-          a.id.startsWith("sep") ? (
-            <div className="fm-menu-sep" key={a.id} />
-          ) : (
-            <button
-              key={a.id}
-              type="button"
-              role="menuitem"
-              className={`fm-menu-item${a.danger ? " fm-menu-item--danger" : ""}`}
-              disabled={a.disabled}
-              onClick={() => {
-                close();
-                a.run();
-              }}
-            >
-              {a.label}
-              {a.shortcut && <span className="fm-menu-shortcut">{a.shortcut}</span>}
-            </button>
-          ),
-        )}
+        {(() => {
+          // A checkmark gutter is reserved for every row in a menu that has
+          // at least one checkable item, so the labels of the rest still line
+          // up -- exactly how native menus with a mix of the two look.
+          const hasCheckable = actions.some((a) => a.checked !== undefined);
+          return actions.map((a) =>
+            a.id.startsWith("sep") ? (
+              <div className="fm-menu-sep" key={a.id} />
+            ) : (
+              <button
+                key={a.id}
+                type="button"
+                role={a.checked === undefined ? "menuitem" : "menuitemcheckbox"}
+                aria-checked={a.checked}
+                className={`fm-menu-item${a.danger ? " fm-menu-item--danger" : ""}`}
+                disabled={a.disabled}
+                onClick={() => {
+                  close();
+                  a.run();
+                }}
+              >
+                {hasCheckable && (
+                  <span className="fm-menu-check" aria-hidden="true">
+                    {a.checked && <Glyph name="check" size={11} strokeWidth={1.8} />}
+                  </span>
+                )}
+                {a.label}
+                {a.shortcut && <span className="fm-menu-shortcut">{a.shortcut}</span>}
+              </button>
+            ),
+          );
+        })()}
       </div>
     </div>,
     document.body,

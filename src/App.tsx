@@ -462,6 +462,14 @@ export default function App() {
       },
       sep("sep4"),
       {
+        id: "toggleHidden",
+        label: "Show Hidden Files",
+        shortcut: "Ctrl+.",
+        checked: s.showHidden,
+        run: () => appState().toggleHidden(),
+      },
+      sep("sep5"),
+      {
         id: "trash",
         label: "Move to Recycle Bin",
         shortcut: "Del",

@@ -357,6 +357,7 @@ export type GlyphName =
   | "sort-up"
   | "sort-down"
   | "close"
+  | "check"
   | "warning";
 
 const GLYPHS: Record<GlyphName, React.ReactNode> = {
@@ -372,6 +373,7 @@ const GLYPHS: Record<GlyphName, React.ReactNode> = {
   "sort-up": <path d="M4.8 9.6 8 6.4l3.2 3.2" />,
   "sort-down": <path d="M4.8 6.4 8 9.6l3.2-3.2" />,
   close: <path d="M4.4 4.4l7.2 7.2M11.6 4.4l-7.2 7.2" />,
+  check: <path d="M3.4 8.4 6.5 11.5 12.6 5" />,
   warning: <path d="M8 2.8 14 13H2L8 2.8ZM8 6.6v3.1M8 11.2v.9" />,
 };
 

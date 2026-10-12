@@ -383,6 +383,14 @@ export const BINDINGS: Binding[] = [
     run: () => appState().toggleHidden(),
   },
   {
+    id: "view.hidden.dot",
+    combo: "ctrl+.",
+    label: "Show hidden files",
+    group: "View",
+    alias: true,
+    run: () => appState().toggleHidden(),
+  },
+  {
     id: "view.system",
     combo: "ctrl+shift+h",
     label: "Show system files",
