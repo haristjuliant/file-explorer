@@ -36,6 +36,7 @@ import type { KeyDeps } from "./keys/keymap";
 import { basename, join, parentOf } from "./lib/path";
 import { orderRegistry } from "./order/registry";
 import { appState, useAppStore } from "./store/appStore";
+import { useFavoritesStore } from "./store/favoritesStore";
 import { ensureDir, insertEntry, invalidate } from "./store/fsStore";
 import { beginTransfer, subscribeToJobs, useOpsStore } from "./store/opsStore";
 import { watchPrefs } from "./store/persist";
@@ -379,6 +380,15 @@ export default function App() {
     const cursor = s.cursor;
     const sep = (id: string): MenuAction => ({ id, label: "", run: () => {} });
 
+    // Folders only -- a favourite has to be something `navigate` can open.
+    const order = orderRegistry.get();
+    const favoriteFolders =
+      count > 0
+        ? [...s.selection].filter((p) => order.entryOf(p)?.isDir)
+        : cursor && order.entryOf(cursor)?.isDir
+          ? [cursor]
+          : [];
+
     return [
       { id: "open", label: "Open", disabled: !cursor, run: openCursor },
       {
@@ -440,6 +450,15 @@ export default function App() {
         run: () => {
           if (cursor) void revealInExplorer(cursor).catch(() => {});
         },
+      },
+      {
+        id: "addFavorite",
+        label:
+          favoriteFolders.length === 1
+            ? `Add "${basename(favoriteFolders[0])}" to Favourites`
+            : "Add to Favourites",
+        disabled: favoriteFolders.length === 0,
+        run: () => useFavoritesStore.getState().addFavorites(favoriteFolders),
       },
       sep("sep4"),
       {

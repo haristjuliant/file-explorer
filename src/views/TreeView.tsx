@@ -10,6 +10,7 @@ import { flattenTree, type TreeRow } from "../lib/treeFlatten";
 import { makeOrderFromRows } from "../order/registry";
 import { usePublishOrder } from "../order/usePublishOrder";
 import { appState, useAppStore } from "../store/appStore";
+import { startFavoriteAddDrag } from "../store/favoritesStore";
 import { ensureDir, useFsStore } from "../store/fsStore";
 import { DirStates } from "./DirStates";
 import { RenameInput, ROW_H } from "./ListView";
@@ -66,6 +67,8 @@ const Row = memo(function Row({
       data-cursor={isCursor ? "true" : undefined}
       data-cut={cut ? "true" : undefined}
       data-dimmed={dimmed ? "true" : undefined}
+      draggable={row.isDir}
+      onDragStart={(e) => startFavoriteAddDrag(e, row.path)}
       onPointerDown={(e) => {
         const s = appState();
         if (e.button === 2) {

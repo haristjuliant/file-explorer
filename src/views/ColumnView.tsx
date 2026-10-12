@@ -20,6 +20,7 @@ import { visibleSorted } from "../lib/sort";
 import { makeOrder } from "../order/registry";
 import { usePublishOrderIf } from "../order/usePublishOrder";
 import { appState, PREVIEW_COLUMN, useAppStore } from "../store/appStore";
+import { startFavoriteAddDrag } from "../store/favoritesStore";
 import { ensureDir, useFsStore } from "../store/fsStore";
 import { recallChild, rememberChild } from "./columnMemory";
 import { DirStates } from "./DirStates";
@@ -92,6 +93,8 @@ const ColumnRow = memo(function ColumnRow({
       data-cursor={isCursor ? "true" : undefined}
       data-cut={cut ? "true" : undefined}
       data-dimmed={dimmed ? "true" : undefined}
+      draggable={entry.isDir}
+      onDragStart={(e) => startFavoriteAddDrag(e, path)}
       onPointerDown={(e) => {
         const s = appState();
         if (e.button === 2) {

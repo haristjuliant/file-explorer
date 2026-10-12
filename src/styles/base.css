@@ -367,6 +367,60 @@ button {
   color: var(--fm-text-tertiary);
 }
 
+/* The Favourites section doubles as a drop target for adding a favourite. */
+.fm-sidebar-group[data-dragover="true"] {
+  outline: 2px dashed var(--fm-accent);
+  outline-offset: -2px;
+  border-radius: var(--fm-radius-row);
+  background: color-mix(in srgb, var(--fm-accent) 10%, transparent);
+}
+
+/* A user-added favourite: the "x" only appears on hover, over the row it
+   removes -- Finder's own affordance for the same gesture. */
+.fm-place-wrap {
+  position: relative;
+}
+.fm-place-remove {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: var(--fm-text-tertiary);
+  background: var(--fm-bg-sidebar);
+  opacity: 0;
+}
+.fm-place-wrap:hover .fm-place-remove {
+  opacity: 1;
+}
+.fm-place-remove:hover {
+  color: var(--fm-text);
+  background: var(--fm-row-hover);
+}
+
+/* Reordering a favourite: a thin insertion line shows where it will land. */
+.fm-place-wrap[data-drop-before="true"]::before,
+.fm-place-wrap[data-drop-after="true"]::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--fm-accent);
+  pointer-events: none;
+}
+.fm-place-wrap[data-drop-before="true"]::before {
+  top: -1px;
+}
+.fm-place-wrap[data-drop-after="true"]::after {
+  bottom: -1px;
+}
+
 /* Drag handles for sidebar and preview widths. */
 .fm-resize-v {
   position: absolute;

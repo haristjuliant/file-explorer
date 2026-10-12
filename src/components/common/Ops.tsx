@@ -10,7 +10,7 @@ import {
   useOpsStore,
   type Toast,
 } from "../../store/opsStore";
-import { useAppStore } from "../../store/appStore";
+import { useAppStore, type ContextMenuState } from "../../store/appStore";
 import { Glyph } from "./Icon";
 
 import "./ops.css";
@@ -28,9 +28,25 @@ export interface MenuAction {
   run(): void;
 }
 
-export function ContextMenu({ actions }: { actions: MenuAction[] }) {
-  const menu = useAppStore((s) => s.contextMenu);
-  const close = useAppStore((s) => s.closeContextMenu);
+/**
+ * Defaults to the app's single shared `contextMenu` slot (the file rows'
+ * right-click menu), but a caller with its own menu -- the sidebar's
+ * Favourites row, say -- can pass `state`/`onClose` to drive the same popup
+ * from local state instead, without fighting over that one shared slot.
+ */
+export function ContextMenu({
+  actions,
+  state,
+  onClose,
+}: {
+  actions: MenuAction[];
+  state?: ContextMenuState | null;
+  onClose?: () => void;
+}) {
+  const storeMenu = useAppStore((s) => s.contextMenu);
+  const storeClose = useAppStore((s) => s.closeContextMenu);
+  const menu = state === undefined ? storeMenu : state;
+  const close = onClose ?? storeClose;
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
 

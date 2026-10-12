@@ -12,6 +12,7 @@ import { makeOrder } from "../order/registry";
 import { marqueeRange } from "../order/selectionMath";
 import { usePublishOrder } from "../order/usePublishOrder";
 import { appState, useAppStore, type ListColumn } from "../store/appStore";
+import { startFavoriteAddDrag } from "../store/favoritesStore";
 import { ensureDir } from "../store/fsStore";
 import { commitRename } from "../store/opsStore";
 import { DirStates } from "./DirStates";
@@ -152,6 +153,10 @@ const Row = memo(function Row({ entry, path, index, top, onOpen }: RowProps) {
       data-cursor={isCursor ? "true" : undefined}
       data-cut={cut ? "true" : undefined}
       data-dimmed={dimmed ? "true" : undefined}
+      // Folders only: dragged out to the sidebar to become a favourite. Files
+      // simply cannot be dragged, since `startFavoriteAddDrag` cancels the event.
+      draggable={entry.isDir}
+      onDragStart={(e) => startFavoriteAddDrag(e, path)}
       onPointerDown={onPointerDown}
       onDoubleClick={() => onOpen(path, entry.isDir)}
       onContextMenu={(e) => {
