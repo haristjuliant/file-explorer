@@ -14,7 +14,7 @@ properties, because the Finder look needs precise control.
 | | |
 |---|---|
 | **Installer** | [`release/Finder_0.1.1_x64-setup.exe`](release/Finder_0.1.1_x64-setup.exe) — 2.7 MB, installs per-user, no administrator rights needed |
-| **Portable** | [`release/file-manager.exe`](release/file-manager.exe) — 11.0 MB, self-contained, run it from anywhere |
+| **Portable** | [`release/file-manager.exe`](release/file-manager.exe) — 11.1 MB, self-contained, run it from anywhere |
 
 Windows 10 or 11, 64-bit. WebView2 is already present on Windows 11; on older
 builds the installer fetches it automatically.
