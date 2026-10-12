@@ -15,6 +15,7 @@ import { Sidebar } from "./components/shell/Sidebar";
 import { StatusBar } from "./components/shell/StatusBar";
 import { Toolbar, type PathBarHandle, type SearchHandle } from "./components/shell/Toolbar";
 import {
+  clipboardFiles,
   createFolder,
   deletePermanently,
   duplicateEntries,
@@ -257,16 +258,40 @@ export default function App() {
 
   const paste = useCallback(() => {
     const s = appState();
+    if (!s.cwd) return;
+
     const clipboard = s.clipboard;
-    if (!clipboard || !s.cwd) return;
-    void beginTransfer({
-      sources: clipboard.paths,
-      destDir: s.cwd,
-      mode: clipboard.mode === "cut" ? "move" : "copy",
-    });
-    // A cut is consumed by its paste; a copy stays on the clipboard.
-    if (clipboard.mode === "cut") s.clearClipboard();
-  }, []);
+    if (clipboard) {
+      void beginTransfer({
+        sources: clipboard.paths,
+        destDir: s.cwd,
+        mode: clipboard.mode === "cut" ? "move" : "copy",
+      });
+      // A cut is consumed by its paste; a copy stays on the clipboard.
+      if (clipboard.mode === "cut") s.clearClipboard();
+      return;
+    }
+
+    // Nothing copied inside the app: fall back to whatever Explorer (or
+    // another app) last put on the real Windows clipboard.
+    const destDir = s.cwd;
+    void (async () => {
+      try {
+        const external = await clipboardFiles();
+        if (!external || external.paths.length === 0) {
+          toast("info", "Nothing to paste.");
+          return;
+        }
+        void beginTransfer({
+          sources: external.paths,
+          destDir,
+          mode: external.isMove ? "move" : "copy",
+        });
+      } catch (e) {
+        toast("error", (e as FsError).message);
+      }
+    })();
+  }, [toast]);
 
   const duplicateSelection = useCallback(() => {
     const paths = [...appState().selection];
@@ -346,7 +371,6 @@ export default function App() {
     const s = appState();
     const count = s.selection.size;
     const cursor = s.cursor;
-    const hasClipboard = s.clipboard !== null;
     const sep = (id: string): MenuAction => ({ id, label: "", run: () => {} });
 
     return [
@@ -390,7 +414,16 @@ export default function App() {
         disabled: count === 0,
         run: () => appState().cutSelection(),
       },
-      { id: "paste", label: "Paste", shortcut: "Ctrl+V", disabled: !hasClipboard, run: paste },
+      {
+        id: "paste",
+        label: "Paste",
+        shortcut: "Ctrl+V",
+        // Whether there is actually anything pasteable -- the app clipboard,
+        // or Explorer's -- is only knowable asynchronously, so this stays
+        // enabled and `paste` itself reports when there was nothing to do.
+        disabled: !s.cwd,
+        run: paste,
+      },
       sep("sep3"),
       { id: "newfolder", label: "New Folder", shortcut: "Ctrl+Shift+N", run: newFolder },
       {

@@ -73,6 +73,7 @@ pub fn run() {
             commands::search::start_search,
             commands::search::cancel_search,
             commands::shell::open_path,
+            commands::shell::clipboard_files,
             commands::shell::reveal_in_explorer,
             commands::watch::watch_dir,
             commands::watch::unwatch_dir,

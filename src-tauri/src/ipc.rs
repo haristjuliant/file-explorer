@@ -137,6 +137,16 @@ pub struct KnownFolders {
     pub one_drive: Option<String>,
 }
 
+/// The file list currently sitting on the Windows clipboard, e.g. from
+/// Ctrl+C / Ctrl+X in Explorer.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClipboardFiles {
+    pub paths: Vec<String>,
+    /// True when the source tagged this as a Cut rather than a Copy.
+    pub is_move: bool,
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileMeta {

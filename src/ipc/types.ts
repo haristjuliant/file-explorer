@@ -93,6 +93,13 @@ export interface DriveInfo {
   isSystem: boolean;
 }
 
+/** The file list currently on the Windows clipboard, e.g. from Ctrl+C / Ctrl+X in Explorer. */
+export interface ClipboardFiles {
+  paths: string[];
+  /** True when the source tagged this as a Cut rather than a Copy. */
+  isMove: boolean;
+}
+
 export interface KnownFolders {
   home: string | null;
   desktop: string | null;

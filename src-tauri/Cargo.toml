@@ -43,7 +43,9 @@ features = [
   "Win32_Storage_FileSystem",         # GetLogicalDriveStringsW, GetDriveTypeW,
                                       # GetVolumeInformationW, GetDiskFreeSpaceExW, FILE_ATTRIBUTE_*
   "Win32_System_Com",                 # CoTaskMemFree (SHGetKnownFolderPath output)
+  "Win32_System_DataExchange",        # OpenClipboard / GetClipboardData / CloseClipboard, for pasting Explorer's copied files
   "Win32_System_Diagnostics_Debug",   # SetThreadErrorMode / SEM_FAILCRITICALERRORS
+  "Win32_System_Memory",              # GlobalLock/GlobalUnlock, for the clipboard's "Preferred DropEffect" value
   "Win32_System_WindowsProgramming",  # DRIVE_FIXED / DRIVE_REMOVABLE / DRIVE_REMOTE / ...
   "Win32_UI_Shell",                   # SHGetKnownFolderPath, FOLDERID_*, ShellExecuteW,
                                       # StrCmpLogicalW, SHParseDisplayName, SHOpenFolderAndSelectItems

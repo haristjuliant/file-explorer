@@ -11,6 +11,7 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { assertCanonical, normalize } from "../lib/path";
 import {
   asFsError,
+  type ClipboardFiles,
   type DirPage,
   type DriveInfo,
   type FileMeta,
@@ -72,6 +73,17 @@ export function openPath(path: string): Promise<void> {
 
 export function revealInExplorer(path: string): Promise<void> {
   return call<void>("reveal_in_explorer", { path: normalize(path) });
+}
+
+/**
+ * The file list currently on the Windows clipboard, if any -- what lets
+ * Ctrl+V paste files that were copied or cut in Explorer (or any other app)
+ * rather than only what was copied inside this one.
+ */
+export async function clipboardFiles(): Promise<ClipboardFiles | null> {
+  const files = await call<ClipboardFiles | null>("clipboard_files");
+  if (!files) return null;
+  return { ...files, paths: files.paths.map(normalize) };
 }
 
 /* ------------------------------------------------------------------------- */
